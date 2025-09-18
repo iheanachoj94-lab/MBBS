@@ -96,3 +96,50 @@
 
     // Forgot password flow
     forgotLink.addEventListener('click', async (e)=>{
+e.preventDefault();
+      const email = (form.elements['email'].value||'').trim();
+      if (!email){ setNote('Enter your email first, then click “Forgot password?”'); return; }
+      try {
+        await sendPasswordResetEmail(auth, email);
+        setNote('Password reset email sent. Check your inbox.');
+      } catch (err) {
+        const map = {
+          'auth/invalid-email': 'Invalid email address.',
+          'auth/user-not-found': 'No account found with this email.'
+        };
+        setNote(map[err.code] || ('Failed to send reset email: ' + err.message));
+      }
+    });
+
+    // Login flow (no direct redirect here)
+    form.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      setNote('Signing in…');
+
+      const email = (form.elements['email'].value||'').trim();
+      const pass  = (form.elements['password'].value||'').trim();
+      const remember = form.elements['remember'].checked;
+
+      try{
+        // Persistence based on "Remember me"
+        await setPersistence(auth, remember ? browserLocalPersistence : browserSessionPersistence);
+
+        // This will trigger onAuthStateChanged on success, which performs the redirect
+        await signInWithEmailAndPassword(auth, email, pass);
+        setNote('Signed in.');
+      }catch(err){
+        console.error(err);
+        const map = {
+          'auth/invalid-email': 'Invalid email address.',
+          'auth/user-disabled': 'This account has been disabled.',
+          'auth/user-not-found': 'No account found with this email.',
+          'auth/wrong-password': 'Incorrect password.',
+          'auth/too-many-requests': 'Too many attempts. Try again later.',
+          'auth/network-request-failed': 'Network error. Check your connection.'
+        };
+        setNote(map[err.code] || ('Failed to sign in: ' + err.message));
+      }
+    });
+  </script>
+</body>
+</html>
