@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wesley University — MBBS Past Questions Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* ===== Dashboard gallery matching Admin cards ===== */
+    .gallery{
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+      gap:16px;
+    }
+    .card .thumb-img{
+      border-radius:12px;
+      max-height:300px;
+      object-fit:contain;
+      width:100%;
+      background:#0b1020;
+      border:1px solid var(--border);
+    }
+    .card .meta{
+      padding:8px 0 0 0;
+      font-size:12px;
+      color:var(--muted);
+    }
+    /* Lightbox (optional 'View' button) */
+    .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;place-items:center;padding:16px;z-index:1000}
+    .lightbox.open{display:grid}
+    .lb-card{max-width:min(1000px,96vw);max-height:90vh;text-align:center}
+    .lb-img{max-width:100%;max-height:70vh;border-radius:12px;border:1px solid var(--border);background:#0b1020}
+    .lb-meta{color:var(--muted);margin-top:8px}
+    .lb-close{position:absolute;top:12px;right:16px;font-size:28px;height:42px;width:42px;border-radius:50%;border:1px solid var(--border);background:rgba(255,255,255,.06);color:#fff;cursor:pointer}
+
+    /* === Network status banner === */
+    .net-banner{
+      position: fixed; left: 0; right: 0; top: 64px;
+      margin: 0 auto; z-index: 1000;
+      width: min(1100px, 96vw);
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 14px;
+      box-shadow: var(--shadow);
+      transform: translateY(-120%); opacity: 0; pointer-events: none;
+      transition: transform .35s ease, opacity .35s ease;
+    }
+    .net-banner.show{ transform: translateY(0); opacity: 1; pointer-events: auto; }
+    .net-banner.online{ background: rgba(40,180,99,.14); border-color: rgba(40,180,99,.35); }
+    .net-banner.offline{ background: rgba(235,77,75,.14); border-color: rgba(235,77,75,.35); }
+    .net-dot{width:10px;height:10px;border-radius:50%}
+    .net-banner.online .net-dot{background:#2ecc71}
+    .net-banner.offline .net-dot{background:#eb4d4b}
+    @media (prefers-reduced-motion: reduce){ .net-banner{ transition: none; } }
+    @media (max-width: 860px){ .net-banner{ top: calc(64px + 8px); } }
+  </style>
+</head>
+<body class="theme-dark">
+  <!-- Nav -->
+  <nav class="nav">
+    <div class="container nav-inner">
+      <a class="brand" href="#"><img src="logo.png" alt="Wesley University Logo" /><span>Wesley University</span></a>
+      <div class="nav-links">
+        <span class="pill">MBBS Students Portal</span>
+        <a href="#" id="logoutBtn" class="btn">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Network banner -->
+  <div id="netBanner" class="net-banner" role="status" aria-live="polite">
+    <span class="net-dot" aria-hidden="true"></span>
+    <span id="netText">Checking connection…</span>
+  </div>
+
+  <header class="hero" style="padding:40px 0">
+    <div class="container">
+      <h1 class="headline" style="font-size:34px">Past Questions (Image Gallery)</h1>
+      <p class="sub">Filter by Level, Semester, Year, and Course — click <i>Save</i> to download immediately or <i>View</i> to preview large.</p>
+    </div>
+  </header>
+
+  <section>
+    <div class="container">
+      <!-- Filters -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="grid three">
+          <div>
+            <label>Level</label>
+            <select id="fLevel">
+              <option value="">All</option>
+              <option>100</option><option>200</option><option>300</option>
+              <option>400</option><option>500</option><option>600</option>
+            </select>
+          </div>
+          <div>
+            <label>Semester</label>
+            <select id="fSem">
+              <option value="">All</option>
+              <option>First</option><option>Second</option>
+            </select>
+          </div>
+          <div>
+            <label>Year</label>
+            <select id="fYear"><option value="">All</option></select>
+          </div>
+        </div>
+        <div class="grid two" style="margin-top:12px">
+          <div>
+            <label>Course</label>
+            <input id="fCourse" placeholder="e.g., ANA201, Anatomy, Pathology..." />
+          </div>
+          <div class="actions">
+            <button id="resetFilters" class="btn">Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gallery -->
+      <div class="card">
+        <div class="row between" style="margin-bottom:8px">
+          <strong id="resultCount">Loading…</strong>
+          <span class="muted">Medicine & Surgery • Images</span>
+        </div>
+        <div id="gallery" class="gallery"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Lightbox (optional) -->
+  <div id="lightbox" class="lightbox" aria-hidden="true">
+    <button id="lbClose" class="lb-close" aria-label="Close">×</button>
+    <div class="lb-card">
+      <img id="lbImg" class="lb-img" alt="Past question image">
+      <div id="lbMeta" class="lb-meta"></div>
+      <div class="actions" style="justify-content:center;margin-top:8px">
+        <a id="lbDownload" class="btn primary" download>Save Image</a>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="container footer">
+      <div class="brand-row">
+        <img src="logo.png" alt="Wesley University Logo" />
+        <span>Wesley University</span>
+      </div>
+      <div class="muted">© <span id="year"></span> Wesley University. All rights reserved. Developed by WinKing</div>
+      <div class="links"><a href="#">Privacy</a></div>
+    </div>
+  </footer>
+
+  <script>
+    (function(){var y=document.getElementById('year'); if(y) y.textContent=new Date().getFullYear();})();
+  </script>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import {
+      getFirestore, enableIndexedDbPersistence,
+      collection, query, orderBy, onSnapshot
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    // Firebase config (same as admin)
+    const firebaseConfig = {
+      apiKey: "AIzaSyB6InkEfMZBP3cm_lZo15E6EfNl5w5uqpA",
+      authDomain: "wesley-app-b568a.firebaseapp.com",
+      projectId: "wesley-app-b568a",
+      storageBucket: "wesley-app-b568a.appspot.com",
+      messagingSenderId: "881690269290",
+      appId: "1:881690269290:web:89db026bd49f05aea81c13",
+      measurementId: "G-Y3LES1QWCP"
+    };
+
+    const app  = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+    enableIndexedDbPersistence(db).catch(()=>{});
+
+    // === Network banner helper ===
+    function mountNetworkBanner({ autoHideMs = 3000, disableSelectors = [] } = {}){
+      const bar = document.getElementById('netBanner');
+      const txt = document.getElementById('netText');
+      if (!bar || !txt) return;
+      let hideTimer = null;
+
+      const applyState = (online, { silent = false } = {})=>{
+        bar.classList.toggle('online', online);
+        bar.classList.toggle('offline', !online);
+        bar.classList.add('show');
+
+        // no risky buttons on dashboard, so we skip disabling
+        if (online){
+          txt.textContent = 'Back online';
+          clearTimeout(hideTimer);
+          hideTimer = setTimeout(()=> bar.classList.remove('show'), silent ? 0 : autoHideMs);
+        } else {
+          txt.textContent = 'You are offline';
+          clearTimeout(hideTimer);
+        }
+      };
+
+      applyState(navigator.onLine, { silent: !navigator.onLine });
+      window.addEventListener('online',  ()=> applyState(true));
+      window.addEventListener('offline', ()=> applyState(false));
+    }
+
+    // Auth guard (because Firestore rules require auth != null)
+    onAuthStateChanged(auth, (user)=>{
+      const resultCt = document.getElementById('resultCount');
+      if (!user) { resultCt.textContent = 'Please log in to view past questions…'; setTimeout(()=>location.href='login.html',500); return; }
+
+      document.getElementById('logoutBtn')?.addEventListener('click', async (e)=>{
+        e.preventDefault(); await signOut(auth); location.href='login.html';
+      });
+
+      mountNetworkBanner();   // show online/offline banner
+      startLive();            // start Firestore listener
+    });
+
+    const elLevel  = document.getElementById('fLevel');
+    const elSem    = document.getElementById('fSem');
+    const elYear   = document.getElementById('fYear');
+    const elCourse = document.getElementById('fCourse');
+    const elReset  = document.getElementById('resetFilters');
+    const gallery  = document.getElementById('gallery');
+    const resultCt = document.getElementById('resultCount');
+
+    const lb       = document.getElementById('lightbox');
+    const lbImg    = document.getElementById('lbImg');
+    const lbMeta   = document.getElementById('lbMeta');
+    const lbDl     = document.getElementById('lbDownload');
+    const lbClose  = document.getElementById('lbClose');
+
+    let ALL = [];
+
+    function cardHTML(item){
+      const fname = (item.courseCode || 'past-question') + '.jpg';
+      return `
+        <article class="card" data-id="${item.id}">
+          <div class="muted" style="font-size:12px;margin-bottom:6px">
+            <b>${item.courseCode||''}</b> — ${item.courseName||''}
+          </div>
+          ${item.imageData
+            ? `<img class="thumb-img" src="${item.imageData}" alt="${item.courseCode}" loading="lazy">`
+            : '<div class="muted">No image</div>'}
+          <div class="muted" style="font-size:12px;margin-top:8px">
+            ${item.level||''}L • ${item.semester||''} • ${item.year||''}
+          </div>
+          ${item.comment ? `<div class="muted" style="margin-top:6px">${item.comment}</div>` : ''}
+          <div class="actions" style="margin-top:8px">
+            ${item.imageData ? `<button class="btn ghost" data-view="${item.id}">View</button>` : ''}
+            ${item.imageData ? `<a class="btn" href="${item.imageData}" download="${fname}">Save</a>` : ''}
+          </div>
+        </article>
+      `;
+    }
+
+    function renderYears(){
+      const years = [...new Set(ALL.map(x => x.year))].filter(Boolean).sort((a,b)=>b-a);
+      elYear.innerHTML = '<option value="">All</option>' + years.map(y=>`<option>${y}</option>`).join('');
+    }
+
+    function applyFilters(){
+      const L = elLevel.value.trim();
+      const S = elSem.value.trim();
+      const Y = elYear.value.trim();
+      const C = elCourse.value.trim().toLowerCase();
+
+      const filtered = ALL.filter(x=>{
+        if (L && String(x.level)!==L) return false;
+        if (S && x.semester!==S) return false;
+        if (Y && String(x.year)!==Y) return false;
+        if (C && !(x.courseCode.toLowerCase().includes(C) || x.courseName.toLowerCase().includes(C))) return false;
+        return true;
+      });
+
+      gallery.innerHTML = filtered.map(cardHTML).join('') || '<div class="muted">No results.</div>';
+      resultCt.textContent = `${filtered.length} result${filtered.length===1?'':'s'}`;
+
+      // Lightbox open (when "View" clicked)
+      gallery.querySelectorAll('[data-view]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const id = btn.getAttribute('data-view');
+          const item = filtered.find(x=>x.id===id);
+          if (!item) return;
+          lbImg.src = item.imageData;
+          lbMeta.innerHTML = `<b>${item.courseCode}</b> — ${item.courseName}<br>${item.level}L • ${item.semester} • ${item.year}${item.comment?`<br><span class="muted">${item.comment}</span>`:''}`;
+          lbDl.href = item.imageData;
+          lbDl.download = `${item.courseCode||'past-question'}.jpg`;
+          lb.classList.add('open'); lb.setAttribute('aria-hidden','false');
+        });
+      });
+    }
+
+    // Lightbox close
+    lbClose.addEventListener('click', ()=>{
+      lb.classList.remove('open'); lb.setAttribute('aria-hidden','true'); lbImg.removeAttribute('src');
+    });
+    lb.addEventListener('click', (e)=>{ if (e.target === lb) lbClose.click(); });
+
+    // Real-time listener
+    function startLive(){
+      const qy = query(collection(db,'past_questions'), orderBy('createdAt','desc'));
+      onSnapshot(qy, (snap)=>{
+        ALL = snap.docs.map(d=>({ id:d.id, ...d.data() })); // uses imageData just like admin
+        renderYears();
+        applyFilters();
+      }, (err)=>{
+        console.error(err);
+        resultCt.textContent = (err.code === 'permission-denied')
+          ? 'Access denied. Please log in.'
+          : 'Failed to load past questions.';
+      });
+    }
+
+    [elLevel, elSem, elYear].forEach(el => el.addEventListener('change', applyFilters));
+    elCourse.addEventListener('input', applyFilters);
+    elReset.addEventListener('click', ()=>{ elLevel.value=''; elSem.value=''; elYear.value=''; elCourse.value=''; applyFilters(); });
+  </script>
+</body>
+</html>

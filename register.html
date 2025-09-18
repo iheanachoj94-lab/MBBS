@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wesley University — Register (MBBS)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="theme-dark auth-bg">
+  <main class="auth-wrap">
+    <a href="index.html" class="brand auth-brand">
+      <img src="logo.png" alt="Wesley University Logo" />
+      <span>Wesley University</span>
+    </a>
+
+    <form id="registerForm" class="auth-card card" autocomplete="off">
+      <h1>Create Account</h1>
+      <p class="muted">Restricted to Medicine & Surgery students</p>
+
+      <label>Full Name</label>
+      <input name="name" placeholder="Your full name" required>
+
+      <label>Email</label>
+      <input type="email" name="email" placeholder="you@example.com" required>
+
+      <label>Phone Number</label>
+      <input type="tel" name="phone" placeholder="+234 801 234 5678" required>
+
+      <div class="grid two">
+        <div>
+          <label>Level</label>
+          <select name="level" required>
+            <option value="">Select Level</option>
+            <option>100</option><option>200</option><option>300</option>
+            <option>400</option><option>500</option><option>600</option>
+          </select>
+        </div>
+        <div>
+          <label>Matric No. (optional)</label>
+          <input name="matric" placeholder="e.g., WES/MBBS/22/0123">
+        </div>
+      </div>
+
+      <label>Password</label>
+      <div class="password">
+        <input id="regPass" type="password" name="password" placeholder="Create a strong password" required minlength="8">
+        <button type="button" class="show" data-target="regPass">Show</button>
+      </div>
+
+      <label>Confirm Password</label>
+      <div class="password">
+        <input id="regPass2" type="password" name="password2" placeholder="Re-type password" required minlength="8">
+        <button type="button" class="show" data-target="regPass2">Show</button>
+      </div>
+
+      <label class="check">
+        <input type="checkbox" required>
+        <span>I confirm I’m a Wesley University Medicine & Surgery student and agree to the <a href="#">Terms</a> & <a href="#">Privacy</a>.</span>
+      </label>
+
+      <button class="btn primary" type="submit">Create Account</button>
+      <p class="muted">Have an account? <a href="login.html">Login</a></p>
+      <p id="regNote" class="muted"></p>
+    </form>
+  </main>
+
+  <script src="script.js"></script>
+
+  <script type="module">
+    // Firebase SDKs (CDN)
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import {
+      getAuth, createUserWithEmailAndPassword, updateProfile,
+      onAuthStateChanged, setPersistence, browserLocalPersistence
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import {
+      getFirestore, doc, setDoc, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    // SAME CONFIG EVERYWHERE ✅
+    const firebaseConfig = {
+      apiKey: "AIzaSyB6InkEfMZBP3cm_lZo15E6EfNl5w5uqpA",
+      authDomain: "wesley-app-b568a.firebaseapp.com",
+      projectId: "wesley-app-b568a",
+      storageBucket: "wesley-app-b568a.appspot.com",
+      messagingSenderId: "881690269290",
+      appId: "1:881690269290:web:89db026bd49f05aea81c13",
+      measurementId: "G-Y3LES1QWCP"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+
+    // Make the session persistent (survives page loads on GitHub Pages)
+    await setPersistence(auth, browserLocalPersistence).catch(()=>{});
+// If already signed in (e.g., they came back to register), send them to dashboard
+    let redirected = false;
+    onAuthStateChanged(auth, (user)=>{
+      if (user && !redirected) {
+        redirected = true;
+        const note = document.getElementById('regNote');
+        if (note) note.textContent = 'Signed in. Redirecting…';
+        setTimeout(()=> location.href = './dashboard.html', 200);
+      }
+    });
+
+    // Show/Hide password toggles
+    document.querySelectorAll('.password .show').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = btn.getAttribute('data-target');
+        const input = document.getElementById(id);
+        input.type = input.type === 'password' ? 'text' : 'password';
+        btn.textContent = input.type === 'password' ? 'Show' : 'Hide';
+      });
+    });
+
+    const form   = document.getElementById('registerForm');
+    const regNote= document.getElementById('regNote');
+    const setNote = (m)=> regNote.textContent = m || '';
+
+    form.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      setNote('');
+
+      const data = Object.fromEntries(new FormData(form).entries());
+
+      // Basic validation
+      if ((data.password || '').length < 8){ setNote('Password must be at least 8 characters.'); return; }
+      if (data.password !== data.password2){ setNote('Passwords do not match.'); return; }
+      if (!/^[+0-9 ()-]{7,}$/.test(data.phone||'')){ setNote('Please enter a valid phone number.'); return; }
+      if (!data.level){ setNote('Please select your level.'); return; }
+
+      try{
+        setNote('Creating account…');
+
+        // 1) Create user (this automatically signs them in)
+        const cred = await createUserWithEmailAndPassword(auth, data.email, data.password);
+
+        // 2) Update display name
+        await updateProfile(cred.user, { displayName: data.name });
+
+        // 3) Save profile to Firestore
+        await setDoc(doc(db, 'students', cred.user.uid), {
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          level: data.level,
+          matric: data.matric || '',
+          program: 'Medicine & Surgery',
+          createdAt: serverTimestamp()
+        });
+
+        // Do NOT redirect here — wait for onAuthStateChanged to confirm session
+        setNote('Account created. Signing you in…');
+
+      } catch (err){
+        console.error(err);
+        const map = {
+          'auth/email-already-in-use': 'This email is already registered.',
+          'auth/invalid-email': 'Invalid email address.',
+          'auth/weak-password': 'Password is too weak.',
+          'auth/network-request-failed': 'Network error. Please check your connection.'
+        };
+        setNote(map[err.code] || ('Failed to create account: ' + err.message));
+      }
+    });
+  </script>
+</body>
+</html>

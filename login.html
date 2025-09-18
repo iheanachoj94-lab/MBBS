@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wesley University — Login (MBBS)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="theme-dark auth-bg">
+  <main class="auth-wrap">
+    <a href="index.html" class="brand auth-brand">
+      <img src="logo.png" alt="Wesley University Logo" />
+      <span>Wesley University</span>
+    </a>
+
+    <form id="loginForm" class="auth-card card" autocomplete="off">
+      <h1>Login</h1>
+      <p class="muted">Medicine & Surgery Students Only</p>
+
+      <label>Email</label>
+      <input type="email" name="email" placeholder="you@example.com" required>
+
+      <label>Password</label>
+      <div class="password">
+        <input id="loginPass" type="password" name="password" placeholder="••••••••" required>
+        <button type="button" class="show" data-target="loginPass">Show</button>
+      </div>
+
+      <div class="row between">
+        <label class="check"><input type="checkbox" name="remember"> <span>Remember me</span></label>
+        <a href="#" id="forgotLink" class="muted">Forgot password?</a>
+      </div>
+
+      <button class="btn primary" type="submit">Sign In</button>
+      <p class="muted">No account? <a href="register.html">Create one</a></p>
+      <p id="authNote" class="muted"></p>
+    </form>
+  </main>
+
+  <!-- (Optional) keep your script.js if you want (e.g., for year or nav helpers) -->
+  <script src="script.js"></script>
+
+  <!-- Firebase-powered login -->
+  <script type="module">
+    // Firebase SDKs (CDN)
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import {
+      getAuth, signInWithEmailAndPassword, setPersistence,
+      browserLocalPersistence, browserSessionPersistence,
+      sendPasswordResetEmail, onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+    // SAME CONFIG EVERYWHERE ✅
+    const firebaseConfig = {
+      apiKey: "AIzaSyB6InkEfMZBP3cm_lZo15E6EfNl5w5uqpA",
+      authDomain: "wesley-app-b568a.firebaseapp.com",
+      projectId: "wesley-app-b568a",
+      storageBucket: "wesley-app-b568a.appspot.com",
+      messagingSenderId: "881690269290",
+      appId: "1:881690269290:web:89db026bd49f05aea81c13",
+      measurementId: "G-Y3LES1QWCP"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    // Show/Hide password toggles
+    document.querySelectorAll('.password .show').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = btn.getAttribute('data-target');
+        const input = document.getElementById(id);
+        input.type = input.type === 'password' ? 'text' : 'password';
+        btn.textContent = input.type === 'password' ? 'Show' : 'Hide';
+      });
+    });
+
+    const form = document.getElementById('loginForm');
+    const note = document.getElementById('authNote');
+    const forgotLink = document.getElementById('forgotLink');
+
+    function setNote(msg){ note.textContent = msg || ''; }
+
+    // 🔒 Redirect ONLY when Firebase confirms a signed-in user
+    let redirected = false;
+    onAuthStateChanged(auth, (user)=>{
+      if (user && !redirected) {
+        redirected = true;           // prevent double-redirects
+        setNote('Welcome back. Redirecting…');
+        // Small delay lets persistence fully settle
+        setTimeout(()=> location.href = './dashboard.html', 200);
+      }
+    });
+
+    // Forgot password flow
+    forgotLink.addEventListener('click', async (e)=>{
