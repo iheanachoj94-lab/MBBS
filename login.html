@@ -40,7 +40,7 @@
     </form>
   </main>
 
-  <!-- (Optional) keep your script.js if you want (e.g., for year or nav helpers) -->
+  <!-- Shared helpers (year, mobile menu, etc.) -->
   <script src="script.js"></script>
 
   <!-- Firebase-powered login -->
@@ -67,7 +67,32 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
 
-    // Show/Hide password toggles
+    const form = document.getElementById('loginForm');
+    const note = document.getElementById('authNote');
+    const forgotLink = document.getElementById('forgotLink');
+    const setNote = (msg)=> note.textContent = msg || '';
+
+    // 🔒 Redirect ONLY when Firebase confirms a signed-in user
+    let redirected = false;
+    onAuthStateChanged(auth, (user)=>{
+      if (user && !redirected) {
+        redirected = true;
+        setNote('Welcome back. Redirecting…');
+        setTimeout(()=> location.href = './dashboard.html', 200);
+      }
+    });
+
+    // ✅ Robust Show/Hide password (delegated)
+    document.addEventListener('click', (e)=>{
+      const btn = e.target.closest('.password .show');
+      if (!btn) return;
+      e.preventDefault();
+
+      const id = btn.getAttribute('data-target');
+      const input = document.getElementById(id);
+      if (!input) return;
+
+      // Password show/hide
     document.querySelectorAll('.password .show').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         const id = btn.getAttribute('data-target');
@@ -76,29 +101,11 @@
         btn.textContent = input.type === 'password' ? 'Show' : 'Hide';
       });
     });
-
-    const form = document.getElementById('loginForm');
-    const note = document.getElementById('authNote');
-    const forgotLink = document.getElementById('forgotLink');
-
-    function setNote(msg){ note.textContent = msg || ''; }
-
-    // 🔒 Redirect ONLY when Firebase confirms a signed-in user
-    let redirected = false;
-    onAuthStateChanged(auth, (user)=>{
-      if (user && !redirected) {
-        redirected = true;           // prevent double-redirects
-        setNote('Welcome back. Redirecting…');
-        // Small delay lets persistence fully settle
-        setTimeout(()=> location.href = './dashboard.html', 200);
-      }
-    });
-
     // Forgot password flow
     forgotLink.addEventListener('click', async (e)=>{
-e.preventDefault();
+      e.preventDefault();
       const email = (form.elements['email'].value||'').trim();
-      if (!email){ setNote('Enter your email first, then click “Forgot password?”'); return; }
+      if (!email){ setNote('Enter your email first, then click “Forgot password?”.'); return; }
       try {
         await sendPasswordResetEmail(auth, email);
         setNote('Password reset email sent. Check your inbox.');
@@ -111,7 +118,7 @@ e.preventDefault();
       }
     });
 
-    // Login flow (no direct redirect here)
+    // Login flow (no direct redirect here; onAuthStateChanged handles it)
     form.addEventListener('submit', async (e)=>{
       e.preventDefault();
       setNote('Signing in…');
@@ -124,7 +131,7 @@ e.preventDefault();
         // Persistence based on "Remember me"
         await setPersistence(auth, remember ? browserLocalPersistence : browserSessionPersistence);
 
-        // This will trigger onAuthStateChanged on success, which performs the redirect
+        // Triggers onAuthStateChanged on success
         await signInWithEmailAndPassword(auth, email, pass);
         setNote('Signed in.');
       }catch(err){
