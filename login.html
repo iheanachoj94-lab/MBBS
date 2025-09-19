@@ -92,15 +92,12 @@
       const input = document.getElementById(id);
       if (!input) return;
 
-      // Password show/hide
-    document.querySelectorAll('.password .show').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
-        const id = btn.getAttribute('data-target');
-        const input = document.getElementById(id);
-        input.type = input.type === 'password' ? 'text' : 'password';
-        btn.textContent = input.type === 'password' ? 'Show' : 'Hide';
-      });
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      btn.textContent = show ? 'Hide' : 'Show';
+      btn.setAttribute('aria-pressed', String(show));
     });
+
     // Forgot password flow
     forgotLink.addEventListener('click', async (e)=>{
       e.preventDefault();
