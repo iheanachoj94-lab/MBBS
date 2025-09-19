@@ -120,13 +120,10 @@
       const input = document.getElementById(id);
       if (!input) return;
 
-     document.querySelectorAll('.password .show').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
-        const id = btn.getAttribute('data-target');
-        const input = document.getElementById(id);
-        input.type = input.type === 'password' ? 'text' : 'password';
-        btn.textContent = input.type === 'password' ? 'Show' : 'Hide';
-      });
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      btn.textContent = show ? 'Hide' : 'Show';
+      btn.setAttribute('aria-pressed', String(show));
     });
 
     const form   = document.getElementById('registerForm');
