@@ -118,22 +118,6 @@ if (logoutBtn){
   });
 }
 
-// Toggle password show/hide (robust delegated handler)
-document.addEventListener('click', (e) => {
-  const btn = e.target.closest('.password .show');
-  if (!btn) return;
-  e.preventDefault();
-
-  const targetId = btn.getAttribute('data-target');
-  const input = document.getElementById(targetId);
-  if (!input) return;
-
-  const show = input.type === 'password';
-  input.type = show ? 'text' : 'password';
-  btn.textContent = show ? 'Hide' : 'Show';
-  btn.setAttribute('aria-pressed', String(show));
-});
-
 /* ===========================
    Past Questions Dataset (demo)
    Put real PDFs in /assets/papers/ matching 'file' paths below.
