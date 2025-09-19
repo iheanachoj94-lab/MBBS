@@ -67,6 +67,7 @@
     </form>
   </main>
 
+  <!-- Shared helpers (year, mobile menu, etc.) -->
   <script src="script.js"></script>
 
   <script type="module">
@@ -95,9 +96,10 @@
     const auth = getAuth(app);
     const db   = getFirestore(app);
 
-    // Make the session persistent (survives page loads on GitHub Pages)
+    // Make the session persistent (survives page loads on static hosting)
     await setPersistence(auth, browserLocalPersistence).catch(()=>{});
-// If already signed in (e.g., they came back to register), send them to dashboard
+
+    // If already signed in (e.g., they came back to register), send them to dashboard
     let redirected = false;
     onAuthStateChanged(auth, (user)=>{
       if (user && !redirected) {
@@ -108,8 +110,17 @@
       }
     });
 
-    // Show/Hide password toggles
-    document.querySelectorAll('.password .show').forEach(btn=>{
+    // ✅ Robust Show/Hide password (delegated — covers regPass & regPass2)
+    document.addEventListener('click', (e)=>{
+      const btn = e.target.closest('.password .show');
+      if (!btn) return;
+      e.preventDefault();
+
+      const id = btn.getAttribute('data-target');
+      const input = document.getElementById(id);
+      if (!input) return;
+
+     document.querySelectorAll('.password .show').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         const id = btn.getAttribute('data-target');
         const input = document.getElementById(id);
@@ -137,7 +148,7 @@
       try{
         setNote('Creating account…');
 
-        // 1) Create user (this automatically signs them in)
+        // 1) Create user (auto signs them in)
         const cred = await createUserWithEmailAndPassword(auth, data.email, data.password);
 
         // 2) Update display name
@@ -154,7 +165,7 @@
           createdAt: serverTimestamp()
         });
 
-        // Do NOT redirect here — wait for onAuthStateChanged to confirm session
+        // Wait for onAuthStateChanged to redirect
         setNote('Account created. Signing you in…');
 
       } catch (err){
