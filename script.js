@@ -118,15 +118,20 @@ if (logoutBtn){
   });
 }
 
-// Toggle password show/hide
-document.querySelectorAll('.password .show').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    const id = btn.getAttribute('data-target');
-    const input = document.getElementById(id);
-    if(!input) return;
-    input.type = input.type === 'password' ? 'text' : 'password';
-    btn.textContent = input.type === 'password' ? 'Show' : 'Hide';
-  });
+// Toggle password show/hide (robust delegated handler)
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.password .show');
+  if (!btn) return;
+  e.preventDefault();
+
+  const targetId = btn.getAttribute('data-target');
+  const input = document.getElementById(targetId);
+  if (!input) return;
+
+  const show = input.type === 'password';
+  input.type = show ? 'text' : 'password';
+  btn.textContent = show ? 'Hide' : 'Show';
+  btn.setAttribute('aria-pressed', String(show));
 });
 
 /* ===========================
@@ -134,7 +139,6 @@ document.querySelectorAll('.password .show').forEach(btn=>{
    Put real PDFs in /assets/papers/ matching 'file' paths below.
 =========================== */
 const PAST_QUESTIONS = [
-  // level, semester, year, code, title, file
   {level:'100', semester:'First',  year:2023, code:'BIO101', title:'General Biology I', file:'assets/papers/BIO101_2023_First.pdf'},
   {level:'100', semester:'Second', year:2024, code:'CHM102', title:'General Chemistry II', file:'assets/papers/CHM102_2024_Second.pdf'},
   {level:'200', semester:'First',  year:2022, code:'ANA201', title:'Anatomy I', file:'assets/papers/ANA201_2022_First.pdf'},
@@ -207,7 +211,6 @@ const PAST_QUESTIONS = [
   // CSV Export
   document.getElementById('exportCsv')?.addEventListener('click', ()=>{
     const rows = [['Course Code','Course Title','Level','Semester','Year','File']];
-    // re-apply current filters
     const L = (fLevel.value||'').trim();
     const S = (fSem.value||'').trim();
     const Y = (yearSel.value||'').trim();
